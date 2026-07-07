@@ -15,6 +15,7 @@
 - FH_env_config.m：共享环境配置（白噪声/时延/多普勒复用）
 - experiment_ber_ser.m：仅 BER/SER 实验
 - experiment_sync_success.m：仅同步成功率实验
+- thesis_figure_suite.m：论文图批量生成脚本（6张核心图）
 - Mcreate.m：伪随机序列生成
 - Plot_f.m：频谱绘图
 
@@ -106,3 +107,30 @@ fprintf('BER=%.4f, SER=%.4f\n', result.ber, result.ser);
 ## 6. 说明
 
 为避免功能重复与维护成本，原本拆分的多个演示/对比脚本与重复仿真函数已删除，统一到单入口配置式调用。
+
+## 7. 论文图一键生成
+
+运行以下脚本可一次性生成论文常用图：
+
+```matlab
+thesis_figure_suite
+```
+
+脚本会在 `results_thesis_figs` 目录输出：
+1. `fig1_ber_ser_curves.png`：BER/SER 主曲线
+2. `fig2_ablation_bars.png`：消融对比柱状图
+3. `fig3_snr_doppler_heatmaps.png`：SNR-Doppler BER 热力图（补偿前后）
+4. `fig4_runtime.png`：运行耗时对比图
+5. `fig5_spectrum_chain.png`：发端到收端的频谱链路图
+6. `fig6_time_domain_chain.png`：发端到收端的时域链路图
+
+同时会输出 CSV 表格与 `raw_results.mat`，用于论文画图复现和数据追溯。
+
+论文图注与结果分析独立文档：
+- `results_thesis_figs/FIGURE_CAPTIONS_AND_ANALYSIS.md`（按图1-图6逐条提供可直接用于论文的图注与分析段落）
+
+### 运行档位
+
+`thesis_figure_suite.m` 中包含两种档位：
+1. 快速档：`quickMode = true`，适合调试和快速出图
+2. 论文档：`quickMode = false`，SNR 和多普勒采样更密、统计更稳定

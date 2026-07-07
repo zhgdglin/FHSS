@@ -133,17 +133,19 @@ receiveSignal = noisySignal .* spreadSignal;
 if opts.enableLMS
     muLMS = opts.lmsMu;
     filterLen = opts.lmsFilterLen;
-    w = ones(filterLen, 1) / filterLen;
+    w = zeros(filterLen, 1);
+    w(1) = 1;
     signalOut = zeros(1, length(receiveSignal));
     for n = filterLen:length(receiveSignal)
         x_vec = receiveSignal(n:-1:n-filterLen+1).';
         y_est = w' * x_vec;
-        d_ref = spreadSignal(n);
+        d_ref = receiveSignal(n);
         e = d_ref - y_est;
-        w = w + muLMS * e * x_vec;
+        normFactor = (x_vec' * x_vec) + 1e-8;
+        w = w + (muLMS / normFactor) * e * x_vec;
         signalOut(n) = y_est;
     end
-    signalOut(1:filterLen-1) = signalOut(filterLen);
+    signalOut(1:filterLen-1) = receiveSignal(1:filterLen-1);
 else
     cofBand = fir1(64, 1000/fs);
     signalOut = filter(cofBand, 1, receiveSignal);
@@ -204,29 +206,25 @@ end
 
 %% 10) 比特恢复（可选 Viterbi）
 if opts.enableViterbi
-    softBits = zeros(1, numCodedBits);
+    hardBits = zeros(1, numCodedBits);
     for n = 1:ns
         idx = sentencedSymbol(n) - 1;
         b1 = floor(idx / 2);
         b2 = mod(idx, 2);
-        energy_this = softDecisions(n, sentencedSymbol(n));
-        energy_other = max(softDecisions(n, [1:sentencedSymbol(n)-1, sentencedSymbol(n)+1:4]));
-        llr = energy_this - energy_other;
-
         p1 = 2*n - 1;
         p2 = 2*n;
         if p1 <= numCodedBits
-            softBits(p1) = llr * (2*b1 - 1);
+            hardBits(p1) = b1;
         end
         if p2 <= numCodedBits
-            softBits(p2) = llr * (2*b2 - 1);
+            hardBits(p2) = b2;
         end
     end
 
     decoder = comm.ViterbiDecoder('TrellisStructure', poly2trellis(3, [7, 5]), ...
-                                  'InputFormat', 'Soft', ...
-                                  'SoftInputWordLength', 3);
-    decodedBitsTemp = step(decoder, softBits(:));
+                                  'InputFormat', 'Hard', ...
+                                  'TerminationMethod', 'Truncated');
+    decodedBitsTemp = step(decoder, hardBits(:));
     decodedBits = decodedBitsTemp(1:g).';
 else
     decodedBits = zeros(1, g);
